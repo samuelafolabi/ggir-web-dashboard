@@ -162,7 +162,7 @@ export function Footer() {
             <ul className="mt-2 flex flex-col gap-2 text-sm text-muted-foreground">
               <li>
                 <a
-                  href="https://cran.r-project.org/web/packages/GGIR/vignettes/GGIR.html"
+                  href="https://wadpac.github.io/GGIR/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="transition-colors hover:text-foreground"
