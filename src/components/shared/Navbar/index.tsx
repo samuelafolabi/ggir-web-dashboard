@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { href: "/", label: "Upload" },
   { href: "/visualization", label: "Dashboard" },
   { href: "/epoch-explorer", label: "Epoch Explorer" },
+  { href: "/docs", label: "Docs" },
 ];
 
 export function Navbar() {
