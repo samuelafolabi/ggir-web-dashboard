@@ -37,7 +37,16 @@ jobs:
         run: npm ci
 
       - name: Build with Next.js
-        run: npx next build
+        run: npm run build
+
+      - name: Verify static export output
+        run: |
+          if [ ! -d "out" ]; then
+            echo "::error::Missing ./out directory. Confirm next.config.ts has output: 'export'."
+            echo "Workspace root contents:"
+            ls -la
+            exit 1
+          fi
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
