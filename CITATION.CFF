@@ -1,12 +1,12 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
-- family-names: "Afolabi"
-  given-names: "Samuel Timileyin"
-  orcid: "https://orcid.org/0009-0002-7325-6405"
-- family-names: "Lisa"
-  given-names: "Mona"
-  orcid: "https://orcid.org/0000-0000-0000-0000"
+  - family-names: "Afolabi"
+    given-names: "Samuel Timileyin"
+    orcid: "https://orcid.org/0009-0002-7325-6405"
+  - family-names: "Vincent"
+    given-names: "Van Hees"
+    orcid: "https://orcid.org/0000-0003-0182-9008"
 title: "ggir-web-dashboard"
 version: 1.0.0
 doi: 10.5281/zenodo.1234
