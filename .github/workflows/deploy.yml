@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy Next.js site to Pages
 
 on:
   push:
@@ -12,34 +12,37 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Build Project
-        run: npm run build
+          cache: "npm"
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
+        with:
+          # Automatically inject basePath in your Next.js configuration
+          static_site_generator: next
 
-      - name: Upload Artifact
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build with Next.js
+        run: npx next build
+
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Change './dist' to './build' if you are using Create React App instead of Vite/Svelte
-          path: "./dist"
+          path: ./out
 
   deploy:
     environment:
