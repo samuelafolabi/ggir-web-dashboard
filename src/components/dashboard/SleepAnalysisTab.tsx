@@ -208,6 +208,51 @@ export function SleepAnalysisTab() {
 
   return (
     <div className="space-y-8">
+      {/* Key Metrics Table */}
+      <section className="space-y-3">
+        <h3 className="text-base font-semibold">Key Sleep Metrics</h3>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Metric</TableHead>
+                <TableHead>Mean</TableHead>
+                <TableHead>SD</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell className="font-medium">Sleep Efficiency</TableCell>
+                <TableCell>
+                  {metrics.efficiency !== null ? `${metrics.efficiency.toFixed(1)}%` : "N/A"}
+                </TableCell>
+                <TableCell>
+                  {metrics.efficiencySD > 0 ? `${metrics.efficiencySD.toFixed(1)}%` : "—"}
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">WASO</TableCell>
+                <TableCell>
+                  {metrics.waso !== null ? `${metrics.waso.toFixed(1)} min` : "N/A"}
+                </TableCell>
+                <TableCell>
+                  {metrics.wasoSD > 0 ? `${metrics.wasoSD.toFixed(1)} min` : "—"}
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">Sleep Duration</TableCell>
+                <TableCell>
+                  {metrics.duration !== null ? `${metrics.duration.toFixed(1)} hrs` : "N/A"}
+                </TableCell>
+                <TableCell>
+                  {metrics.durationSD > 0 ? `${metrics.durationSD.toFixed(1)} hrs` : "—"}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </section>
+
       {/* Raster / Hypnogram */}
       <section className="space-y-3">
         <h3 className="text-base font-semibold">Sleep Raster Plot</h3>
@@ -411,50 +456,6 @@ export function SleepAnalysisTab() {
         )}
       </section>
 
-      {/* Key Metrics Table */}
-      <section className="space-y-3">
-        <h3 className="text-base font-semibold">Key Sleep Metrics</h3>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Metric</TableHead>
-                <TableHead>Mean</TableHead>
-                <TableHead>SD</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell className="font-medium">Sleep Efficiency</TableCell>
-                <TableCell>
-                  {metrics.efficiency !== null ? `${metrics.efficiency.toFixed(1)}%` : "N/A"}
-                </TableCell>
-                <TableCell>
-                  {metrics.efficiencySD > 0 ? `${metrics.efficiencySD.toFixed(1)}%` : "—"}
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">WASO</TableCell>
-                <TableCell>
-                  {metrics.waso !== null ? `${metrics.waso.toFixed(1)} min` : "N/A"}
-                </TableCell>
-                <TableCell>
-                  {metrics.wasoSD > 0 ? `${metrics.wasoSD.toFixed(1)} min` : "—"}
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Sleep Duration</TableCell>
-                <TableCell>
-                  {metrics.duration !== null ? `${metrics.duration.toFixed(1)} hrs` : "N/A"}
-                </TableCell>
-                <TableCell>
-                  {metrics.durationSD > 0 ? `${metrics.durationSD.toFixed(1)} hrs` : "—"}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-      </section>
     </div>
   );
 }
