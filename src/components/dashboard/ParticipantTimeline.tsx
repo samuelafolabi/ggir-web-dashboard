@@ -37,6 +37,12 @@ export function ParticipantTimeline() {
     font: { color: "hsl(var(--foreground))" },
   };
 
+  const nonwearCol = hasColumn(columns, GGIR_COLUMNS.nonwearPercDaySpt)
+    ? GGIR_COLUMNS.nonwearPercDaySpt
+    : hasColumn(columns, GGIR_COLUMNS.nonwearPercDay)
+    ? GGIR_COLUMNS.nonwearPercDay
+    : null;
+
   // ── Multi-participant: Gantt-style overview ───────────────────────
   const multiData = useMemo(() => {
     if (!isMulti) return null;
@@ -55,9 +61,9 @@ export function ParticipantTimeline() {
       const formattedDates = rawDates.map((d) => formatDate(d));
 
       let avgValidHours: number | null = null;
-      if (hasColumn(columns, GGIR_COLUMNS.nonwearPercDay)) {
+      if (nonwearCol) {
         const vals = pRows
-          .map((r) => toNumber(r[GGIR_COLUMNS.nonwearPercDay]))
+          .map((r) => toNumber(r[nonwearCol]))
           .filter((v): v is number => v !== null);
         if (vals.length > 0) {
           const avgNonwear = vals.reduce((a, b) => a + b, 0) / vals.length;
@@ -93,7 +99,7 @@ export function ParticipantTimeline() {
       const weekday = toString(r[GGIR_COLUMNS.weekday]);
       const formatted = formatDate(rawDate) || rawDate;
       const label = weekday ? `${weekday} (${formatted})` : formatted;
-      const nw = toNumber(r[GGIR_COLUMNS.nonwearPercDay]);
+      const nw = nonwearCol ? toNumber(r[nonwearCol]) : null;
 
       dayEntries.push({
         label: label || `Day ${dayEntries.length + 1}`,
@@ -205,6 +211,7 @@ export function ParticipantTimeline() {
                 yaxis: {
                   title: { text: hasWear ? "Wear Hours" : "Value" },
                   side: "left" as const,
+                  ...(hasWear ? { range: [0, 24], tickvals: [0, 6, 12, 18, 24] } : {}),
                 },
                 ...(hasNonwear && hasWear
                   ? {
@@ -213,6 +220,8 @@ export function ParticipantTimeline() {
                         overlaying: "y" as const,
                         side: "right" as const,
                         range: [0, 100],
+                        tickvals: [0, 25, 50, 75, 100],
+                        showgrid: false,
                       },
                     }
                   : {}),

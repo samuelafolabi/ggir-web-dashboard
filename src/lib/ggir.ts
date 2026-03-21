@@ -163,9 +163,15 @@ export function computeValidity(rows: Row[], columns: string[]): ValidityResult 
 // ---------------------------------------------------------------------------
 
 export function computeAverageWearTime(rows: Row[], columns: string[]): number | null {
-  if (!hasColumn(columns, GGIR_COLUMNS.nonwearPercDay)) return null;
+  // Use the same column priority as computeValidity for consistency
+  const nonwearCol = hasColumn(columns, GGIR_COLUMNS.nonwearPercDaySpt)
+    ? GGIR_COLUMNS.nonwearPercDaySpt
+    : hasColumn(columns, GGIR_COLUMNS.nonwearPercDay)
+    ? GGIR_COLUMNS.nonwearPercDay
+    : null;
+  if (!nonwearCol) return null;
   const vals = rows
-    .map((r) => toNumber(r[GGIR_COLUMNS.nonwearPercDay]))
+    .map((r) => toNumber(r[nonwearCol]))
     .filter((v): v is number => v !== null);
   if (vals.length === 0) return null;
   const avgNonwearPerc = vals.reduce((a, b) => a + b, 0) / vals.length;
