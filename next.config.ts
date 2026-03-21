@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   turbopack: {},
   serverExternalPackages: ["@duckdb/duckdb-wasm"],
+  images: {
+    unoptimized: true,
+  },
 };
 
 export default nextConfig;
