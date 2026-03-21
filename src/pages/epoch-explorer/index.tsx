@@ -320,12 +320,16 @@ export default function EpochExplorer() {
         {!loadingEpochs && epochs.length > 0 && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">Activity & Acceleration Analysis</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="rounded-lg border bg-card p-4">
+              <ClassDonutChart epochs={epochs} />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-base font-medium">Acceleration Distribution (Log-Scale View)</h3>
+              <p className="text-sm text-muted-foreground">
+                Binned in equal log-x intervals and plotted as a line curve; y-scale auto-switches between linear and log based on count range.
+              </p>
               <div className="rounded-lg border bg-card p-4">
-                <ClassDonutChart epochs={epochs} />
-              </div>
-              <div className="rounded-lg border bg-card p-4">
-                <AccHistogram epochs={epochs} />
+                <AccHistogram epochs={epochs} xScale="log" />
               </div>
             </div>
             <div className="rounded-lg border bg-card p-4">
