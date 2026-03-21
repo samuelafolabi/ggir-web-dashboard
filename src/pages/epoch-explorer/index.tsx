@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useData } from "@/context/DataContext";
 import {
   hasEpochsColumn,
@@ -45,6 +46,8 @@ type MultiDayData = {
   epochs: { timenum: number; class_id: number; spt: boolean; invalid: boolean }[];
 }[];
 
+type ClassDistributionView = "both" | "day" | "night";
+
 export default function EpochExplorer() {
   const { data } = useData();
   const router = useRouter();
@@ -65,6 +68,7 @@ export default function EpochExplorer() {
   const [loadingDays, setLoadingDays] = useState(false);
   const [loadingEpochs, setLoadingEpochs] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [classDistributionView, setClassDistributionView] = useState<ClassDistributionView>("both");
 
   const fileName = data?.metadata.fileName ?? "";
 
@@ -167,6 +171,18 @@ export default function EpochExplorer() {
     const formatted = formatDate(day.calendar_date);
     return day.weekday ? `${day.weekday}, ${formatted}` : formatted;
   }, [days, selectedDate]);
+
+  const filteredClassEpochs = useMemo(() => {
+    const validEpochs = epochs.filter((e) => !e.invalid);
+    if (classDistributionView === "day") return validEpochs.filter((e) => !e.spt);
+    if (classDistributionView === "night") return validEpochs.filter((e) => e.spt);
+    return validEpochs;
+  }, [epochs, classDistributionView]);
+
+  const filteredClassMinutes = useMemo(
+    () => (filteredClassEpochs.length * 5) / 60,
+    [filteredClassEpochs]
+  );
 
   // No data loaded
   if (!data) {
@@ -321,7 +337,28 @@ export default function EpochExplorer() {
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">Activity & Acceleration Analysis</h2>
             <div className="rounded-lg border bg-card p-4">
-              <ClassDonutChart epochs={epochs} />
+              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <Tabs
+                  value={classDistributionView}
+                  onValueChange={(value) => setClassDistributionView(value as ClassDistributionView)}
+                >
+                  <TabsList>
+                    <TabsTrigger value="both">Both</TabsTrigger>
+                    <TabsTrigger value="day">Daytime</TabsTrigger>
+                    <TabsTrigger value="night">Night-time</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                <p className="text-xs text-muted-foreground">
+                  View: {classDistributionView === "both" ? "both periods" : classDistributionView === "day" ? "daytime only" : "night-time only"} | {filteredClassEpochs.length.toLocaleString()} valid epochs ({filteredClassMinutes.toFixed(1)} min)
+                </p>
+              </div>
+              {filteredClassEpochs.length > 0 ? (
+                <ClassDonutChart epochs={filteredClassEpochs} />
+              ) : (
+                <div className="flex h-[320px] items-center justify-center text-sm text-muted-foreground">
+                  No valid epochs available for this selection.
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <h3 className="text-base font-medium">Acceleration Distribution (Log-Scale View)</h3>
