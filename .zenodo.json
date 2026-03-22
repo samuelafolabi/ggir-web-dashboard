@@ -1,0 +1,16 @@
+{
+  "title": "GGIR Explorer: A Serverless Web Dashboard for Interactive Accelerometry Visualization",
+  "description": "A serverless, privacy-first web dashboard leveraging WebAssembly (Wasm) and Apache Parquet for interactive visualization of high-resolution accelerometry data from the GGIR R package.",
+  "creators": [
+    {
+      "name": "Samuel Timileyin Afolabi",
+      "affiliation": "University of Lagos / Madoapp.com"
+    },
+    {
+      "name": "Vincent Van Hees",
+      "affiliation": "Accelting"
+    }
+  ],
+  "access_right": "open",
+  "license": "Apache-2.0"
+}
