@@ -1,7 +1,7 @@
 # GGIR Explorer
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19154830.svg)](https://doi.org/10.5281/zenodo.19154830)
 [Live App](https://ggir-web-dashboard.vercel.app/) · [Docs](https://ggir-web-dashboard.vercel.app/docs) · [Citation](./CITATION.CFF) · [License](./LICENSE)
 
 GGIR Explorer is a browser-based dashboard for accelerometry visualization and exploration of GGIR parquet output locally using DuckDB-Wasm. It is designed to help researchers inspect uploaded wearable research data, review schema and metadata, analyze day-level sleep and physical activity summaries, and drill down into epoch-level behavior when nested epoch data is available.
