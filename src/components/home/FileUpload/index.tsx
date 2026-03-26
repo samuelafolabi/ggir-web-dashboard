@@ -1,5 +1,6 @@
 import { useCallback, useState, useRef } from "react";
-import { Upload, FileUp, X, Loader2, BookOpen } from "lucide-react";
+import { useRouter } from "next/router";
+import { Upload, FileUp, X, Loader2, BookOpen, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { queryParquet, type QueryResult } from "@/lib/duckdb";
 
@@ -11,8 +12,10 @@ export function FileUpload({ onFileRead }: FileUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSampleLoading, setIsSampleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -75,11 +78,37 @@ export function FileUpload({ onFileRead }: FileUploadProps) {
     }
   }, [file, onFileRead]);
 
+  const handleTrySample = useCallback(async () => {
+    setIsSampleLoading(true);
+    setError(null);
+
+    try {
+      const basePath = router.basePath || "";
+      const res = await fetch(`${basePath}/sample_data/ggir_results.parquet`);
+      if (!res.ok) throw new Error("Failed to fetch sample data");
+      const blob = await res.blob();
+      const sampleFile = new File([blob], "ggir_results.parquet", {
+        type: "application/octet-stream",
+      });
+      const result = await queryParquet(sampleFile);
+      setFile(sampleFile);
+      onFileRead?.(result);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load sample data"
+      );
+    } finally {
+      setIsSampleLoading(false);
+    }
+  }, [onFileRead, router.basePath]);
+
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
+
+  const anyLoading = isLoading || isSampleLoading;
 
   return (
     <div className="w-full max-w-xl mx-auto">
@@ -117,6 +146,23 @@ export function FileUpload({ onFileRead }: FileUploadProps) {
         </div>
       </div>
 
+      <div className="mt-3 flex items-center justify-center">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleTrySample}
+          disabled={anyLoading}
+          className="text-xs"
+        >
+          {isSampleLoading ? (
+            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <FlaskConical className="mr-1.5 h-3.5 w-3.5" />
+          )}
+          {isSampleLoading ? "Loading sample…" : "Try with sample data"}
+        </Button>
+      </div>
+
       {file && (
         <div className="mt-4 flex items-center justify-between rounded-lg border bg-card p-4">
           <div className="flex items-center gap-3">
@@ -135,7 +181,7 @@ export function FileUpload({ onFileRead }: FileUploadProps) {
               variant="default"
               size="sm"
               onClick={handleReadFile}
-              disabled={isLoading}
+              disabled={anyLoading}
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -148,7 +194,7 @@ export function FileUpload({ onFileRead }: FileUploadProps) {
               variant="ghost"
               size="icon-xs"
               onClick={handleRemoveFile}
-              disabled={isLoading}
+              disabled={anyLoading}
               aria-label="Remove file"
             >
               <X className="h-4 w-4" />
@@ -163,3 +209,4 @@ export function FileUpload({ onFileRead }: FileUploadProps) {
     </div>
   );
 }
+
