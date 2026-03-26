@@ -193,8 +193,12 @@ export function Footer() {
             </ul>
           </div>
         </div>
-        <div className="mt-8 border-t pt-6 text-center text-xs text-muted-foreground">
-          GGIR Web Dashboard &middot; Built to visualize GGIR output data
+        <div className="mt-8 border-t pt-6 text-center text-xs text-muted-foreground space-y-1">
+          <p>
+            <strong>Privacy:</strong> All data processing happens entirely in
+            your browser. Your files are never uploaded to any server.
+          </p>
+          <p>GGIR Web Dashboard &middot; Built to visualize GGIR output data</p>
         </div>
       </div>
     </footer>
