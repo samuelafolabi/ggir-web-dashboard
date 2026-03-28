@@ -31,10 +31,10 @@ export function ParticipantTimeline() {
 
   const isMulti = participants.length > 1;
 
-  const transparentLayout = {
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)",
-    font: { color: "hsl(var(--foreground))" },
+  const fixedLightLayout = {
+    paper_bgcolor: "#ffffff",
+    plot_bgcolor: "#ffffff",
+    font: { color: "#111827" },
   };
 
   const nonwearCol = hasColumn(columns, GGIR_COLUMNS.nonwearPercDaySpt)
@@ -87,6 +87,28 @@ export function ParticipantTimeline() {
   const singleData = useMemo(() => {
     if (isMulti || rows.length === 0) return null;
 
+    const byDate = new Map<
+      string,
+      { weekday: string; nonwear: number[]; acc: number[] }
+    >();
+
+    for (const r of rows) {
+      const rawDate = toString(r[GGIR_COLUMNS.calendarDate]);
+      if (!rawDate) continue;
+      if (!byDate.has(rawDate)) {
+        byDate.set(rawDate, { weekday: "", nonwear: [], acc: [] });
+      }
+      const bucket = byDate.get(rawDate)!;
+      const weekday = toString(r[GGIR_COLUMNS.weekday]);
+      if (!bucket.weekday && weekday) bucket.weekday = weekday;
+
+      const nw = nonwearCol ? toNumber(r[nonwearCol]) : null;
+      if (nw != null) bucket.nonwear.push(nw);
+
+      const acc = toNumber(r[GGIR_COLUMNS.accDayMg]);
+      if (acc != null) bucket.acc.push(acc);
+    }
+
     const dayEntries: {
       label: string;
       wearHours: number | null;
@@ -94,18 +116,26 @@ export function ParticipantTimeline() {
       accDayMg: number | null;
     }[] = [];
 
-    for (const r of rows) {
-      const rawDate = toString(r[GGIR_COLUMNS.calendarDate]);
-      const weekday = toString(r[GGIR_COLUMNS.weekday]);
+    const sortedDates = Array.from(byDate.keys()).sort();
+    for (const rawDate of sortedDates) {
+      const bucket = byDate.get(rawDate)!;
       const formatted = formatDate(rawDate) || rawDate;
-      const label = weekday ? `${weekday} (${formatted})` : formatted;
-      const nw = nonwearCol ? toNumber(r[nonwearCol]) : null;
+      const label = bucket.weekday ? `${bucket.weekday} (${formatted})` : formatted;
+
+      const nonwearPerc =
+        bucket.nonwear.length > 0
+          ? bucket.nonwear.reduce((a, b) => a + b, 0) / bucket.nonwear.length
+          : null;
+      const accDayMg =
+        bucket.acc.length > 0
+          ? bucket.acc.reduce((a, b) => a + b, 0) / bucket.acc.length
+          : null;
 
       dayEntries.push({
         label: label || `Day ${dayEntries.length + 1}`,
-        wearHours: nw != null ? 24 * (1 - nw / 100) : null,
-        nonwearPerc: nw,
-        accDayMg: toNumber(r[GGIR_COLUMNS.accDayMg]),
+        wearHours: nonwearPerc != null ? 24 * (1 - nonwearPerc / 100) : null,
+        nonwearPerc,
+        accDayMg,
       });
     }
 
@@ -119,6 +149,9 @@ export function ParticipantTimeline() {
     return (
       <section className="space-y-3">
         <h3 className="text-base font-semibold">Participant Timeline Overview</h3>
+        <p className="text-sm text-muted-foreground">
+          Compares recording length by participant. Bar color reflects estimated valid wear-hours quality.
+        </p>
         <div className="rounded-lg border bg-card p-4">
           <div style={{ height: Math.max(200, participants.length * 40 + 100) }}>
             <PlotlyChart
@@ -143,7 +176,7 @@ export function ParticipantTimeline() {
                 hoverinfo: "text" as const,
               }))}
               layout={{
-                ...transparentLayout,
+                ...fixedLightLayout,
                 xaxis: { title: { text: "Recording Days" } },
                 yaxis: { autorange: "reversed" as const },
                 margin: { t: 20, b: 50, l: 200, r: 20 },
@@ -201,12 +234,15 @@ export function ParticipantTimeline() {
     return (
       <section className="space-y-3">
         <h3 className="text-base font-semibold">Recording Timeline</h3>
+        <p className="text-sm text-muted-foreground">
+          Day-level quality overview combining wear hours and non-wear percentage for the selected participant.
+        </p>
         <div className="rounded-lg border bg-card p-4">
           <div className="h-[300px]">
             <PlotlyChart
               data={traces}
               layout={{
-                ...transparentLayout,
+                ...fixedLightLayout,
                 xaxis: { title: { text: "Day" } },
                 yaxis: {
                   title: { text: hasWear ? "Wear Hours" : "Value" },

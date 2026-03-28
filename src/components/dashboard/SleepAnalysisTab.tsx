@@ -19,7 +19,6 @@ import {
   computeSleepEfficiency,
   computeMeanWASO,
   computeMeanSleepDuration,
-  getWASOValues,
   stdDev,
 } from "@/lib/ggir";
 import { SleepHypnogram } from "@/components/dashboard/SleepHypnogram";
@@ -63,131 +62,129 @@ export function SleepAnalysisTab() {
   const hasWakeup = hasColumn(columns, GGIR_COLUMNS.wakeup);
   const hasSleepData = hasOnset && hasWakeup;
 
-  const transparentLayout = {
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)",
-    font: { color: "hsl(var(--foreground))" },
+  const fixedLightLayout = {
+    paper_bgcolor: "#ffffff",
+    plot_bgcolor: "#ffffff",
+    font: { color: "#111827" },
   };
+
+  const nightCol = useMemo(
+    () => columns.find((c) => c.toLowerCase().includes("night")) ?? null,
+    [columns]
+  );
+
+  // Build one canonical row per unique night so all sleep charts/metrics
+  // stay consistent even when parquet rows are duplicated.
+  const sleepNights = useMemo(() => {
+    if (!hasSleepData) return [];
+
+    const deduped = new Map<
+      string,
+      {
+        key: string;
+        label: string;
+        onset: number;
+        wake: number;
+        wasoMin: number | null;
+        sleepDurationHours: number | null;
+        row: Record<string, unknown>;
+      }
+    >();
+
+    filteredRows.forEach((r, i) => {
+      const rawDate = toString(r[GGIR_COLUMNS.calendarDate]);
+      const dateLabel = formatDate(rawDate) || rawDate;
+      const onset = toNumber(r[GGIR_COLUMNS.sleeponset]);
+      const wake = toNumber(r[GGIR_COLUMNS.wakeup]);
+      if (!dateLabel || onset === null || wake === null) return;
+
+      const nightLabel = nightCol
+        ? toString((r as Record<string, unknown>)[nightCol]) || `night ${i + 1}`
+        : "";
+      const key = nightCol ? `${rawDate}::${nightLabel}` : rawDate || dateLabel;
+      if (deduped.has(key)) return;
+
+      const sptMin = toNumber((r as Record<string, unknown>)[GGIR_COLUMNS.durSptMin]);
+      const sleepMin = toNumber((r as Record<string, unknown>)[GGIR_COLUMNS.durSptSleepMin]);
+
+      deduped.set(key, {
+        key,
+        label: nightCol ? `${dateLabel} (${nightLabel})` : dateLabel,
+        onset,
+        wake,
+        wasoMin: sptMin != null && sleepMin != null ? sptMin - sleepMin : null,
+        sleepDurationHours: sleepMin != null ? sleepMin / 60 : null,
+        row: r as Record<string, unknown>,
+      });
+    });
+
+    return Array.from(deduped.values());
+  }, [filteredRows, hasSleepData, nightCol]);
 
   // ── Raster / Hypnogram data ─────────────────────────────────────────
   const rasterData = useMemo(() => {
-    if (!hasSleepData) return null;
-
-    const entries: { date: string; onset: number; wake: number }[] = [];
-    for (const r of filteredRows) {
-      const rawDate = toString(r[GGIR_COLUMNS.calendarDate]);
-      const label = formatDate(rawDate) || rawDate;
-      const onset = toNumber(r[GGIR_COLUMNS.sleeponset]);
-      const wake = toNumber(r[GGIR_COLUMNS.wakeup]);
-      if (onset !== null && wake !== null && label) {
-        entries.push({ date: label, onset, wake });
-      }
-    }
+    if (!hasSleepData || sleepNights.length === 0) return null;
 
     // Build shapes (horizontal bars from onset to wakeup on a noon-to-noon axis)
-    const dates = entries.map((e) => e.date);
-    const onsetMins = entries.map((e) => decimalHourToMinFromNoon(e.onset));
-    const wakeMins = entries.map((e, i) =>
-      normalizeEndAfterStart(onsetMins[i], decimalHourToMinFromNoon(e.wake))
+    const dates = sleepNights.map((n) => n.label);
+    const onsetMins = sleepNights.map((n) => decimalHourToMinFromNoon(n.onset));
+    const wakeMins = sleepNights.map((n, i) =>
+      normalizeEndAfterStart(onsetMins[i], decimalHourToMinFromNoon(n.wake))
     );
 
-    // WASO overlay (computed from dur_spt_min - dur_spt_sleep_min)
-    const wasoMins = getWASOValues(filteredRows, columns);
+    // WASO aligned to the same deduplicated nights
+    const wasoMins = sleepNights.map((n) => n.wasoMin);
     const hasWaso = wasoMins.some((v) => v != null);
 
-    return { dates, onsetMins, wakeMins, wasoMins, entries, hasWaso };
-  }, [filteredRows, hasSleepData, columns]);
+    return { dates, onsetMins, wakeMins, wasoMins, hasWaso, nights: sleepNights };
+  }, [hasSleepData, sleepNights]);
 
   // ── Sleep regularity data ───────────────────────────────────────────
   const regularityData = useMemo(() => {
-    if (!hasSleepData) return null;
-
-    const dates: string[] = [];
-    const onsetTimes: (number | null)[] = [];
-    const wakeTimes: (number | null)[] = [];
-
-    for (const r of filteredRows) {
-      const rawDate = toString(r[GGIR_COLUMNS.calendarDate]);
-      const label = formatDate(rawDate) || rawDate;
-      const onset = toNumber(r[GGIR_COLUMNS.sleeponset]);
-      const wake = toNumber(r[GGIR_COLUMNS.wakeup]);
-      if (label) {
-        dates.push(label);
-        onsetTimes.push(onset);
-        wakeTimes.push(wake);
-      }
-    }
-
-    return { dates, onsetTimes, wakeTimes };
-  }, [filteredRows, hasSleepData]);
+    if (!hasSleepData || sleepNights.length === 0) return null;
+    return {
+      dates: sleepNights.map((n) => n.label),
+      onsetTimes: sleepNights.map((n) => n.onset),
+      wakeTimes: sleepNights.map((n) => n.wake),
+    };
+  }, [hasSleepData, sleepNights]);
 
   // ── Hypnogram input (string times) for the custom component ─────────
   // Prefer an explicit \"night\" column if present; otherwise fall back to row index.
   const hypnogramInput = useMemo(
     () => {
-      if (!hasSleepData) return [];
-
-      // Try to find a GGIR \"night\" column (e.g. night, nightno, night_id, etc.)
-      const nightCol =
-        columns.find((c) => c.toLowerCase().includes("night")) ?? null;
-
-      return filteredRows
-        .map((r, i) => {
-          const rawDate = toString(r[GGIR_COLUMNS.calendarDate]);
-          const dateLabel = formatDate(rawDate) || rawDate;
-          const onset = toNumber(r[GGIR_COLUMNS.sleeponset]);
-          const wake = toNumber(r[GGIR_COLUMNS.wakeup]);
-          if (!dateLabel || onset === null || wake === null) return null;
-
-          // Build a unique night label per row
-          let nightLabel: string;
-          if (nightCol) {
-            const nv = toString((r as Record<string, unknown>)[nightCol]);
-            nightLabel = nv || `night ${i + 1}`;
-          } else {
-            nightLabel = `night ${i + 1}`;
-          }
-
-          return {
-            // Include both GGIR's night label (if any) and a row index to
-            // guarantee uniqueness per night for Plotly's Y-axis categories.
-            date: `${dateLabel} (${nightLabel}, row ${i + 1})`,
-            sleepOnset: decimalHourToTime(onset),
-            wakeUp: decimalHourToTime(wake),
-          };
-        })
-        .filter(
-          (d): d is { date: string; sleepOnset: string; wakeUp: string } =>
-            d !== null
-        );
+      if (!hasSleepData || sleepNights.length === 0) return [];
+      return sleepNights.map((n) => ({
+        date: n.label,
+        sleepOnset: decimalHourToTime(n.onset),
+        wakeUp: decimalHourToTime(n.wake),
+      }));
     },
-    [filteredRows, hasSleepData, columns]
+    [hasSleepData, sleepNights]
   );
 
   // ── Sleep duration values (per-night) for distribution plots ───────
   const sleepDurations = useMemo(() => {
     if (!columns.includes(GGIR_COLUMNS.durSptSleepMin)) return null;
-    const vals = filteredRows
-      .map((r) => toNumber(r[GGIR_COLUMNS.durSptSleepMin]))
-      .filter((v): v is number => v !== null)
-      .map((v) => v / 60); // convert minutes to hours
+    const vals = sleepNights
+      .map((n) => n.sleepDurationHours)
+      .filter((v): v is number => v !== null);
     return vals.length > 0 ? vals : null;
-  }, [filteredRows, columns]);
+  }, [sleepNights, columns]);
 
   // ── Key metrics ─────────────────────────────────────────────────────
   const metrics = useMemo(() => {
-    const efficiency = computeSleepEfficiency(filteredRows, columns);
-    const waso = computeMeanWASO(filteredRows, columns);
-    const duration = computeMeanSleepDuration(filteredRows, columns);
+    const uniqueSleepRows = sleepNights.map((n) => n.row);
+    const efficiency = computeSleepEfficiency(uniqueSleepRows, columns);
+    const waso = computeMeanWASO(uniqueSleepRows, columns);
+    const duration = computeMeanSleepDuration(uniqueSleepRows, columns);
 
     // Compute SDs
     const effVals = columns.includes(GGIR_COLUMNS.sleepEfficiency)
-      ? filteredRows.map((r) => toNumber(r[GGIR_COLUMNS.sleepEfficiency])).filter((v): v is number => v !== null)
+      ? uniqueSleepRows.map((r) => toNumber(r[GGIR_COLUMNS.sleepEfficiency])).filter((v): v is number => v !== null)
       : [];
-    const wasoVals = getWASOValues(filteredRows, columns).filter((v): v is number => v !== null);
-    const durVals = columns.includes(GGIR_COLUMNS.durSptSleepMin)
-      ? filteredRows.map((r) => toNumber(r[GGIR_COLUMNS.durSptSleepMin])).filter((v): v is number => v !== null).map((v) => v / 60)
-      : [];
+    const wasoVals = sleepNights.map((n) => n.wasoMin).filter((v): v is number => v !== null);
+    const durVals = sleepNights.map((n) => n.sleepDurationHours).filter((v): v is number => v !== null);
 
     return {
       efficiency,
@@ -197,7 +194,7 @@ export function SleepAnalysisTab() {
       duration,
       durationSD: stdDev(durVals),
     };
-  }, [filteredRows, columns]);
+  }, [sleepNights, columns]);
 
   // Helper for tick values on noon-to-noon axis
   const noonAxisTicks = {
@@ -256,6 +253,10 @@ export function SleepAnalysisTab() {
       {/* Raster / Hypnogram */}
       <section className="space-y-3">
         <h3 className="text-base font-semibold">Sleep Raster Plot</h3>
+        <p className="text-sm text-muted-foreground">
+          Each row is one night on a noon-to-noon timeline. Blue shows the sleep period time (SPT) window,
+          and orange overlays estimated WASO within that window.
+        </p>
         {!hasSleepData ? (
           <MissingColumn name={`${GGIR_COLUMNS.sleeponset} / ${GGIR_COLUMNS.wakeup}`} />
         ) : rasterData && rasterData.dates.length > 0 ? (
@@ -268,7 +269,7 @@ export function SleepAnalysisTab() {
                     mode: "lines",
                     x: rasterData.dates.flatMap(() => [0, 1440, null]),
                     y: rasterData.dates.flatMap((d) => [d, d, null]),
-                    line: { color: "#d9f99d", width: 14 },
+                    line: { color: "#9ca3af", width: 14 },
                     name: "Day (noon-noon)",
                     hoverinfo: "skip",
                   },
@@ -281,11 +282,11 @@ export function SleepAnalysisTab() {
                       null,
                     ]),
                     y: rasterData.dates.flatMap((d) => [d, d, null]),
-                    line: { color: "hsl(var(--chart-2))", width: 12 },
+                    line: { color: "#2563eb", width: 12 },
                     name: "SPT window",
-                    text: rasterData.entries.flatMap((e) => [
-                      `${decimalHourToTime(e.onset)} - ${decimalHourToTime(e.wake)}`,
-                      `${decimalHourToTime(e.onset)} - ${decimalHourToTime(e.wake)}`,
+                    text: rasterData.nights.flatMap((n) => [
+                      `${decimalHourToTime(n.onset)} - ${decimalHourToTime(n.wake)}`,
+                      `${decimalHourToTime(n.onset)} - ${decimalHourToTime(n.wake)}`,
                       "",
                     ]),
                     hovertemplate: "Window: %{text}<extra></extra>",
@@ -316,7 +317,7 @@ export function SleepAnalysisTab() {
                     : []),
                 ]}
                 layout={{
-                  ...transparentLayout,
+                  ...fixedLightLayout,
                   xaxis: {
                     title: { text: "Time of Day" },
                     range: [0, 1440],
@@ -340,6 +341,9 @@ export function SleepAnalysisTab() {
       {/* Sleep Regularity */}
       <section className="space-y-3">
         <h3 className="text-base font-semibold">Sleep Regularity</h3>
+        <p className="text-sm text-muted-foreground">
+          Tracks nightly onset and wake times. Tighter, flatter lines indicate more consistent sleep timing.
+        </p>
         {!hasSleepData ? (
           <MissingColumn name={`${GGIR_COLUMNS.sleeponset} / ${GGIR_COLUMNS.wakeup}`} />
         ) : regularityData && regularityData.dates.length > 0 ? (
@@ -373,7 +377,7 @@ export function SleepAnalysisTab() {
                   },
                 ]}
                 layout={{
-                  ...transparentLayout,
+                  ...fixedLightLayout,
                   xaxis: { title: { text: "Day" } },
                   yaxis: {
                     title: { text: "Time" },
@@ -398,7 +402,10 @@ export function SleepAnalysisTab() {
 
       {/* Hypnogram (multiple horizontal box plots) */}
       <section className="space-y-3">
-        <h3 className="text-base font-semibold">Hypnogram</h3>
+        <h3 className="text-base font-semibold">Sleep Window Timeline</h3>
+        <p className="text-sm text-muted-foreground">
+          Shows estimated sleep onset-to-wake windows per night. This is a timing view, not sleep-stage classification.
+        </p>
         {hypnogramInput.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No sleep onset / wake-up data available for hypnogram.
@@ -415,7 +422,10 @@ export function SleepAnalysisTab() {
 
       {/* Sleep Duration Distribution */}
       <section className="space-y-3">
-        <h3 className="text-base font-semibold">Sleep Duration Distribution</h3>
+        <h3 className="text-base font-semibold">Nightly Sleep Duration Distribution</h3>
+        <p className="text-sm text-muted-foreground">
+          Box plot summarizes median and spread, while dots show each nightly duration.
+        </p>
         {!sleepDurations ? (
           <MissingColumn name={GGIR_COLUMNS.durSptSleepMin} />
         ) : (
@@ -429,8 +439,13 @@ export function SleepAnalysisTab() {
                     orientation: "h" as const,
                     name: "Sleep duration (hours)",
                     boxmean: "sd" as const,
+                    boxpoints: "all" as const,
+                    jitter: 0.35,
+                    pointpos: 0,
                     marker: {
                       color: "hsl(var(--chart-2))",
+                      size: 6,
+                      opacity: 0.7,
                     },
                     line: {
                       color: "hsl(var(--chart-2))",
@@ -438,7 +453,7 @@ export function SleepAnalysisTab() {
                   },
                 ]}
                 layout={{
-                  ...transparentLayout,
+                  ...fixedLightLayout,
                   xaxis: {
                     title: { text: "Sleep duration (hours)" },
                     zeroline: true,

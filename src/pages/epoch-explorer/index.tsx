@@ -48,6 +48,20 @@ type MultiDayData = {
 
 type ClassDistributionView = "both" | "day" | "night";
 
+function formatDateWithoutWeekday(raw: string): string {
+  const d = new Date(raw);
+  if (!Number.isNaN(d.getTime())) {
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+  const fallback = formatDate(raw);
+  if (!fallback) return raw;
+  return fallback.replace(/^[A-Za-z]{3},\s*/, "");
+}
+
 export default function EpochExplorer() {
   const { data } = useData();
   const router = useRouter();
@@ -168,7 +182,7 @@ export default function EpochExplorer() {
   const dateLabel = useMemo(() => {
     const day = days.find((d) => d.calendar_date === selectedDate);
     if (!day) return selectedDate;
-    const formatted = formatDate(day.calendar_date);
+    const formatted = formatDateWithoutWeekday(day.calendar_date);
     return day.weekday ? `${day.weekday}, ${formatted}` : formatted;
   }, [days, selectedDate]);
 
@@ -179,9 +193,21 @@ export default function EpochExplorer() {
     return validEpochs;
   }, [epochs, classDistributionView]);
 
+  const inferredEpochSeconds = useMemo(() => {
+    if (epochs.length < 2) return 5;
+    const deltas: number[] = [];
+    for (let i = 1; i < epochs.length; i++) {
+      const d = epochs[i].timenum - epochs[i - 1].timenum;
+      if (Number.isFinite(d) && d > 0) deltas.push(d);
+    }
+    if (deltas.length === 0) return 5;
+    deltas.sort((a, b) => a - b);
+    return deltas[Math.floor(deltas.length / 2)];
+  }, [epochs]);
+
   const filteredClassMinutes = useMemo(
-    () => (filteredClassEpochs.length * 5) / 60,
-    [filteredClassEpochs]
+    () => (filteredClassEpochs.length * inferredEpochSeconds) / 60,
+    [filteredClassEpochs, inferredEpochSeconds]
   );
 
   // No data loaded
@@ -280,7 +306,8 @@ export default function EpochExplorer() {
                   <SelectContent>
                     {days.map((d) => (
                       <SelectItem key={d.calendar_date} value={d.calendar_date}>
-                        {d.weekday ? `${d.weekday} — ` : ""}{formatDate(d.calendar_date) || d.calendar_date}
+                        {d.weekday ? `${d.weekday} — ` : ""}
+                        {formatDateWithoutWeekday(d.calendar_date) || d.calendar_date}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -321,6 +348,10 @@ export default function EpochExplorer() {
         {!loadingEpochs && (optionalFields.hasAnglez || optionalFields.hasLux || optionalFields.hasTemperature) && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">Secondary Signals</h2>
+            <p className="text-sm text-muted-foreground">
+              This view uses multiple y-axes (left and right) for different units.
+              Compare timing and shape across signals; compare absolute magnitudes only within the same axis.
+            </p>
             <div className="rounded-lg border bg-card p-4">
               <SecondarySignals
                 epochs={epochs}
@@ -353,7 +384,7 @@ export default function EpochExplorer() {
                 </p>
               </div>
               {filteredClassEpochs.length > 0 ? (
-                <ClassDonutChart epochs={filteredClassEpochs} />
+                <ClassDonutChart epochs={filteredClassEpochs} epochSeconds={inferredEpochSeconds} />
               ) : (
                 <div className="flex h-[320px] items-center justify-center text-sm text-muted-foreground">
                   No valid epochs available for this selection.
@@ -383,7 +414,7 @@ export default function EpochExplorer() {
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">MVPA Accumulation</h2>
             <div className="rounded-lg border bg-card p-4">
-              <MvpaAccumulationChart epochs={epochs} />
+              <MvpaAccumulationChart epochs={epochs} epochSeconds={inferredEpochSeconds} />
             </div>
           </div>
         )}
@@ -435,6 +466,10 @@ export default function EpochExplorer() {
         {allSummaries.length >= 2 && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">Daily Summary Trends</h2>
+            <p className="text-sm text-muted-foreground">
+              Metrics are plotted on separate y-axes due to different units (mg, minutes/hours, and %).
+              Use this chart for day-to-day trend direction rather than direct vertical comparisons between lines.
+            </p>
             <div className="rounded-lg border bg-card p-4">
               <DailyTrendsChart summaries={allSummaries} />
             </div>

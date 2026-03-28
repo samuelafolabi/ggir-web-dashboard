@@ -115,10 +115,10 @@ export function SleepHypnogram({ data }: SleepHypnogramProps) {
     );
   }
 
-  const transparentLayout = {
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)",
-    font: { color: "hsl(var(--foreground))" },
+  const fixedLightLayout = {
+    paper_bgcolor: "#ffffff",
+    plot_bgcolor: "#ffffff",
+    font: { color: "#111827" },
   };
 
   const noonAxisTicks = {
@@ -133,7 +133,7 @@ export function SleepHypnogram({ data }: SleepHypnogramProps) {
         <PlotlyChart
           data={plotData.traces}
           layout={{
-            ...transparentLayout,
+            ...fixedLightLayout,
             xaxis: {
               title: { text: "Time of day" },
               range: [0, 1440],

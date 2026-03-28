@@ -37,9 +37,8 @@ export function ClassDonutChart({ epochs, epochSeconds = 5 }: Props) {
     hole: 0.5,
     marker: { colors },
     textinfo: "percent",
-    hovertemplate: "%{label}<br>%{value} epochs (%{percent})<br>" +
-      minutes.map((m, i) => ``).join("") +
-      "<extra></extra>",
+    hovertemplate:
+      "%{label}<br>%{value} epochs (%{percent})<br>%{customdata} min<extra></extra>",
     customdata: minutes,
     hoverinfo: "label+percent",
   };

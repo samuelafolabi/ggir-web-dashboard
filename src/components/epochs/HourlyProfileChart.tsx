@@ -27,15 +27,17 @@ export function HourlyProfileChart({ epochs, multiDayEpochs }: Props) {
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const hourLabels = hours.map((h) => `${h.toString().padStart(2, "0")}:00`);
   const means = hourBuckets.map((b) =>
-    b.length > 0 ? b.reduce((a, c) => a + c, 0) / b.length : 0
+    b.length > 0 ? b.reduce((a, c) => a + c, 0) / b.length : null
   );
   const sds = hourBuckets.map((b, i) => {
-    if (b.length < 2) return 0;
-    return Math.sqrt(b.reduce((s, v) => s + (v - means[i]) ** 2, 0) / (b.length - 1));
+    if (b.length < 2 || means[i] == null) return null;
+    return Math.sqrt(b.reduce((s, v) => s + (v - means[i]!) ** 2, 0) / (b.length - 1));
   });
 
-  const upper = means.map((m, i) => m + sds[i]);
-  const lower = means.map((m, i) => Math.max(0, m - sds[i]));
+  const upper = means.map((m, i) => (m != null && sds[i] != null ? m + sds[i]! : null));
+  const lower = means.map((m, i) =>
+    m != null && sds[i] != null ? Math.max(0, m - sds[i]!) : null
+  );
 
   const sdBand: Data = {
     x: [...hourLabels, ...hourLabels.slice().reverse()],

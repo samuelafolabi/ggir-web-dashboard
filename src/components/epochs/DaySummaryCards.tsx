@@ -8,9 +8,16 @@ function fmt(v: number | null, decimals = 1, suffix = ""): string {
 
 function fmtTime(decimalHours: number | null): string {
   if (decimalHours == null) return "—";
-  const h = Math.floor(decimalHours);
-  const m = Math.round((decimalHours - h) * 60);
-  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+  // GGIR can store wake times beyond 24h (e.g. 31.2 = 07:12 next day).
+  const totalMinutes = Math.round(decimalHours * 60);
+  const minutesPerDay = 24 * 60;
+  const dayOffset = Math.floor(totalMinutes / minutesPerDay);
+  const normalizedMinutes = ((totalMinutes % minutesPerDay) + minutesPerDay) % minutesPerDay;
+  const h = Math.floor(normalizedMinutes / 60);
+  const m = normalizedMinutes % 60;
+  const base = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+  if (dayOffset <= 0) return base;
+  return `${base} (+${dayOffset}d)`;
 }
 
 export function DaySummaryCards({ summary }: { summary: DaySummary | null }) {

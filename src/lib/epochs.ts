@@ -161,11 +161,23 @@ export async function getParticipantDays(
       `SELECT name FROM parquet_schema('${fileName}') WHERE name = 'weekday'`
     );
     const hasWeekday = schemaResult.numRows > 0;
-    const weekdaySelect = hasWeekday ? ", weekday" : "";
+    const daysSql = hasWeekday
+      ? `SELECT
+          CAST("${idCol}" AS VARCHAR) as id,
+          CAST(calendar_date AS VARCHAR) as calendar_date,
+          MIN(CAST(weekday AS VARCHAR)) as weekday
+        FROM '${fileName}'
+        WHERE ${idCondition(idCol, pid)}
+        GROUP BY 1, 2
+        ORDER BY calendar_date`
+      : `SELECT DISTINCT
+          CAST("${idCol}" AS VARCHAR) as id,
+          CAST(calendar_date AS VARCHAR) as calendar_date
+        FROM '${fileName}'
+        WHERE ${idCondition(idCol, pid)}
+        ORDER BY calendar_date`;
 
-    const result = await conn.query(
-      `SELECT CAST("${idCol}" AS VARCHAR) as id, CAST(calendar_date AS VARCHAR) as calendar_date${weekdaySelect} FROM '${fileName}' WHERE ${idCondition(idCol, pid)} ORDER BY calendar_date`
-    );
+    const result = await conn.query(daysSql);
     const rows = arrowToPlainRows(result);
     return rows.map((r) => ({
       id: toStr(r.id),
@@ -208,17 +220,22 @@ export async function getDaySummary(
       `CAST(calendar_date AS VARCHAR) as calendar_date`,
     ];
     if (availableCols.has("weekday")) {
-      selectParts.push(`weekday`);
+      selectParts.push(`MIN(CAST(weekday AS VARCHAR)) as weekday`);
     }
     for (const col of SUMMARY_COLS) {
       if (availableCols.has(col)) {
-        selectParts.push(`"${col}"`);
+        // Aggregate duplicate day rows deterministically.
+        selectParts.push(`AVG(CAST("${col}" AS DOUBLE)) as "${col}"`);
       }
     }
 
     const pid = participantId.replace(/'/g, "''");
     const result = await conn.query(
-      `SELECT ${selectParts.join(", ")} FROM '${fileName}' WHERE ${idCondition(idCol, pid)} AND ${dateCondition(calendarDate)} LIMIT 1`
+      `SELECT ${selectParts.join(", ")}
+       FROM '${fileName}'
+       WHERE ${idCondition(idCol, pid)} AND ${dateCondition(calendarDate)}
+       GROUP BY 1, 2
+       LIMIT 1`
     );
     const rows = arrowToPlainRows(result);
     if (rows.length === 0) return null;
@@ -266,14 +283,22 @@ export async function getAllDaySummaries(
       `CAST("${idCol}" AS VARCHAR) as id`,
       `CAST(calendar_date AS VARCHAR) as calendar_date`,
     ];
-    if (availableCols.has("weekday")) selectParts.push(`weekday`);
+    if (availableCols.has("weekday")) {
+      selectParts.push(`MIN(CAST(weekday AS VARCHAR)) as weekday`);
+    }
     for (const col of SUMMARY_COLS) {
-      if (availableCols.has(col)) selectParts.push(`"${col}"`);
+      if (availableCols.has(col)) {
+        selectParts.push(`AVG(CAST("${col}" AS DOUBLE)) as "${col}"`);
+      }
     }
 
     const pid = participantId.replace(/'/g, "''");
     const result = await conn.query(
-      `SELECT ${selectParts.join(", ")} FROM '${fileName}' WHERE ${idCondition(idCol, pid)} ORDER BY calendar_date`
+      `SELECT ${selectParts.join(", ")}
+       FROM '${fileName}'
+       WHERE ${idCondition(idCol, pid)}
+       GROUP BY 1, 2
+       ORDER BY calendar_date`
     );
     const rows = arrowToPlainRows(result);
     return rows.map((r) => {

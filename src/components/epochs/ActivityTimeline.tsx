@@ -19,6 +19,19 @@ function decimalHoursToTime(h: number): string {
   return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
 }
 
+function inferEpochHours(epochs: EpochRow[]): number {
+  if (epochs.length < 2) return 5 / 3600;
+  const deltas: number[] = [];
+  for (let i = 1; i < epochs.length; i++) {
+    const d = epochs[i].timenum - epochs[i - 1].timenum;
+    if (Number.isFinite(d) && d > 0) deltas.push(d);
+  }
+  if (deltas.length === 0) return 5 / 3600;
+  deltas.sort((a, b) => a - b);
+  const medianSec = deltas[Math.floor(deltas.length / 2)];
+  return medianSec / 3600;
+}
+
 type Props = {
   epochs: EpochRow[];
   summary: DaySummary | null;
@@ -37,6 +50,7 @@ export function ActivityTimeline({ epochs, summary, dateLabel }: Props) {
   const times = epochs.map((e) => epochToTimeOfDay(e.timenum));
   const hours = epochs.map((e) => epochToHourFraction(e.timenum));
   const accValues = epochs.map((e) => e.acc);
+  const epochHours = inferEpochHours(epochs);
 
   // Build color-coded background bands by class_id
   const shapes: Partial<Shape>[] = [];
@@ -53,7 +67,7 @@ export function ActivityTimeline({ epochs, summary, dateLabel }: Props) {
         xref: "x",
         yref: "paper",
         x0: sptStart,
-        x1: hours[i - 1],
+        x1: hours[i - 1] + epochHours,
         y0: 0,
         y1: 1,
         fillcolor: "rgba(59, 130, 246, 0.08)",
@@ -76,7 +90,7 @@ export function ActivityTimeline({ epochs, summary, dateLabel }: Props) {
         xref: "x",
         yref: "paper",
         x0: invStart,
-        x1: hours[i - 1],
+        x1: hours[i - 1] + epochHours,
         y0: 0,
         y1: 1,
         fillcolor: "rgba(239, 68, 68, 0.08)",
@@ -114,7 +128,7 @@ export function ActivityTimeline({ epochs, summary, dateLabel }: Props) {
   }
 
   // Color each epoch segment by class_id
-  const classSegments = buildClassSegments(epochs, hours);
+  const classSegments = buildClassSegments(epochs, hours, epochHours);
   for (const seg of classSegments) {
     shapes.push({
       type: "rect",
@@ -203,7 +217,8 @@ export function ActivityTimeline({ epochs, summary, dateLabel }: Props) {
 // Build contiguous segments of the same class_id for background coloring
 function buildClassSegments(
   epochs: EpochRow[],
-  hours: number[]
+  hours: number[],
+  epochHours: number
 ): { x0: number; x1: number; color: string }[] {
   const segments: { x0: number; x1: number; color: string }[] = [];
   if (epochs.length === 0) return segments;
@@ -215,7 +230,7 @@ function buildClassSegments(
     if (i === epochs.length || epochs[i].class_id !== currentClass) {
       segments.push({
         x0: startHour,
-        x1: hours[i - 1],
+        x1: hours[i - 1] + epochHours,
         color: CLASS_COLORS[currentClass] ?? "#6b7280",
       });
       if (i < epochs.length) {
