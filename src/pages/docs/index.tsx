@@ -276,7 +276,7 @@ GGIR(
                   directory:
                 </p>
                 <CodeBlock>
-                  {"<outputdir>/output_<studyname>/results/ggir_results.parquet"}
+                  {"<outputdir>/output_<studyname>/results/participant_id.parquet"}
                 </CodeBlock>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Replace{" "}
@@ -303,7 +303,7 @@ GGIR(
                     .
                   </li>
                   <li>
-                    Upload your <InlineCode>ggir_results.parquet</InlineCode>{" "}
+                    Upload your <InlineCode>participant_id.parquet</InlineCode>{" "}
                     file.
                   </li>
                   <li>
@@ -476,7 +476,7 @@ WHERE g.id = 'participant_001'
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">Read file metadata:</p>
                     <CodeBlock>
-{`SELECT * FROM parquet_kv_metadata('ggir_results.parquet');`}
+{`SELECT * FROM parquet_kv_metadata('participant_id.parquet');`}
                     </CodeBlock>
                   </div>
                 </div>

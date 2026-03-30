@@ -22,7 +22,7 @@ import {
   getMultiDayEpochSummary,
 } from "@/lib/epochs";
 import type { EpochRow, DaySummary, ParticipantDay } from "@/lib/epochs";
-import { formatDate } from "@/lib/ggir";
+import { formatDate, getAllParticipants, getDeviceId, computeValidity, getDevice } from "@/lib/ggir";
 
 import { ActivityTimeline } from "@/components/epochs/ActivityTimeline";
 import { MultiDayStack } from "@/components/epochs/MultiDayStack";
@@ -83,6 +83,30 @@ export default function EpochExplorer() {
   const [loadingEpochs, setLoadingEpochs] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [classDistributionView, setClassDistributionView] = useState<ClassDistributionView>("both");
+
+  const participantLabel = useMemo(() => {
+    if (!data) return "GGIR Dashboard";
+    const participants = getAllParticipants(data.rows, data.columns);
+    if (participants.length === 0) return "GGIR Dashboard";
+    if (participants.length === 1) return `Participant ${participants[0]}`;
+    return `${participants.length} Participants`;
+  }, [data]);
+
+  const deviceId = useMemo(
+    () => (data ? getDeviceId(data.rows, data.columns) : null),
+    [data]
+  );
+
+  const device = useMemo(
+    () => (data ? getDevice(data.rows, data.columns) : null),
+    [data]
+  );
+
+  const calibError = useMemo(() => {
+    if (!data) return null;
+    const v = computeValidity(data.rows, data.columns);
+    return v.avgCalibError;
+  }, [data]);
 
   const fileName = data?.metadata.fileName ?? "";
 
@@ -264,10 +288,25 @@ export default function EpochExplorer() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              Epoch Explorer
+              {participantLabel}
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Epoch-level accelerometer time series — {data.metadata.fileName}
+            <p className="mt-1 text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
+              {deviceId && (
+                <span>Device: {device?.toUpperCase()} {deviceId}</span>
+              )}
+              {deviceId && calibError !== null && (
+                <span className="text-muted-foreground/50">·</span>
+              )}
+              {calibError !== null && (
+                <span>
+                  Calibration Err: {calibError.toFixed(4)}
+                  {calibError <= 0.01 ? (
+                    <span className="ml-1 text-xs text-green-600 dark:text-green-400">Pass</span>
+                  ) : (
+                    <span className="ml-1 text-xs text-red-600 dark:text-red-400">Fail</span>
+                  )}
+                </span>
+              )}
             </p>
           </div>
 

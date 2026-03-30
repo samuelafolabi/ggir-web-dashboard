@@ -84,10 +84,10 @@ export function FileUpload({ onFileRead }: FileUploadProps) {
 
     try {
       const basePath = router.basePath || "";
-      const res = await fetch(`${basePath}/sample_data/ggir_results.parquet`);
+      const res = await fetch(`${basePath}/sample_data/123A.parquet`);
       if (!res.ok) throw new Error("Failed to fetch sample data");
       const blob = await res.blob();
-      const sampleFile = new File([blob], "ggir_results.parquet", {
+      const sampleFile = new File([blob], "123A.parquet", {
         type: "application/octet-stream",
       });
       const result = await queryParquet(sampleFile);

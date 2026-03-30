@@ -12,6 +12,7 @@ export const GGIR_COLUMNS = {
   id: "id",
   calendarDate: "calendar_date",
   deviceSn: "device_sn",
+  device: "device",
   filename: "filename",
   weekday: "weekday",
   daytype: "daytype",
@@ -26,7 +27,6 @@ export const GGIR_COLUMNS = {
 
   // Recording metadata (Section 3g)
   bodylocation: "bodylocation",
-  device: "device",
   samplefreq: "samplefreq",
   measDurDys: "meas_dur_dys",
 
@@ -366,6 +366,11 @@ export function getDeviceId(rows: Row[], columns: string[]): string | null {
   return val != null ? toString(val) : null;
 }
 
+export function getDevice(rows: Row[], columns: string[]): string | null {
+  if (!hasColumn(columns, GGIR_COLUMNS.device)) return null;
+  const val = rows[0]?.[GGIR_COLUMNS.device];
+  return val != null ? toString(val) : null;
+}
 // ---------------------------------------------------------------------------
 // Date formatting — handles epoch ms, epoch s, ISO strings, etc.
 // ---------------------------------------------------------------------------

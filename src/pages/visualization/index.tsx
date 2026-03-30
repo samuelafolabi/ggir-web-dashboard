@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import MainLayout from "@/components/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useData } from "@/context/DataContext";
-import { detectAvailableModules, getAllParticipants, getDeviceId, computeValidity } from "@/lib/ggir";
+import { detectAvailableModules, getAllParticipants, getDeviceId, computeValidity, getDevice } from "@/lib/ggir";
 
 import { ValidityHeader } from "@/components/dashboard/ValidityHeader";
 import { DayFilter } from "@/components/dashboard/DayFilter";
@@ -31,6 +31,11 @@ export default function Visualization() {
 
   const deviceId = useMemo(
     () => (data ? getDeviceId(data.rows, data.columns) : null),
+    [data]
+  );
+
+  const device = useMemo(
+    () => (data ? getDevice(data.rows, data.columns) : null),
     [data]
   );
 
@@ -78,14 +83,14 @@ export default function Visualization() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
             {deviceId && (
-              <span>Device: {deviceId}</span>
+              <span>Device: {device?.toUpperCase()} {deviceId}</span>
             )}
             {deviceId && calibError !== null && (
               <span className="text-muted-foreground/50">·</span>
             )}
             {calibError !== null && (
               <span>
-                Calibration Error: {calibError.toFixed(4)}
+                Calibration Err: {calibError.toFixed(4)}
                 {calibError <= 0.01 ? (
                   <span className="ml-1 text-xs text-green-600 dark:text-green-400">Pass</span>
                 ) : (

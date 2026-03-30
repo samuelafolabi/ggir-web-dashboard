@@ -38,7 +38,7 @@ GGIR(
 )
 ```
 
-The parquet file is created at `<outputdir>/output_<studyname>/results/ggir_results.parquet`. For more options and troubleshooting, see the [Docs](https://ggir-web-dashboard.vercel.app/docs) page.
+The parquet file is created at `<outputdir>/output_<studyname>/results/participant_id.parquet`. For more options and troubleshooting, see the [Docs](https://ggir-web-dashboard.vercel.app/docs) page.
 
 ### 2. Open the hosted app
 
