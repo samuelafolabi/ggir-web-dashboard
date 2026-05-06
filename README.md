@@ -115,6 +115,24 @@ npm start
 npm run lint
 ```
 
+### Docker Usage
+
+This project can be run using Docker for a fully reproducible environment without requiring local Node.js setup.
+
+Build the Docker image
+```docker build -t ggir-web-dashboard ``` 
+
+This command builds a Docker image from the project source code.
+
+
+Run the application
+```docker run -d -p 3000:80 ggir-web-dashboard```
+
+Once the container is running, open your browser:
+
+[http://localhost:3000](http://localhost:3000).
+
+
 ## Tech Stack
 
 - Next.js
